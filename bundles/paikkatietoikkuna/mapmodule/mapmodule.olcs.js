@@ -107,14 +107,36 @@ class MapModuleOlCesium extends MapModuleOl {
     }
 
     _getWFSGeoJSONTestLayer (olMap) {
+        let loading = 0;
+        let loaded = 0;
+        let error = 0;
+        const loaderFunction = (extent, resolution, projection) => {
+            console.warn(`Loaded ${loaded}/${loading}. Errors ${error}`);
+            const proj = projection.getCode();
+            const url = 'https://ahocevar.com/geoserver/wfs?service=WFS&' +
+                'version=1.1.0&request=GetFeature&typename=osm:water_areas&' +
+                'outputFormat=application/json&srsname=' + proj + '&' +
+                'bbox=' + extent.join(',') + ',' + proj;
+
+            const onError = () => { vectorSource.removeLoadedExtent(extent); error++; loaded++; };
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url);
+            xhr.onerror = onError;
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    loaded++;
+                    vectorSource.addFeatures(
+                        vectorSource.getFormat().readFeatures(xhr.responseText));
+                } else {
+                    onError();
+                }
+            };
+            loading++;
+            xhr.send();
+        };
         var vectorSource = new VectorSource({
             format: new GeoJSON(),
-            url: function (extent) {
-                return 'https://ahocevar.com/geoserver/wfs?service=WFS&' +
-                    'version=1.1.0&request=GetFeature&typename=osm:water_areas&' +
-                    'outputFormat=application/json&srsname=EPSG:3857&' +
-                    'bbox=' + extent.join(',') + ',EPSG:3857';
-            },
+            loader: Oskari.util.throttle(loaderFunction, 3000),
             strategy: bboxStrategy
         });
         var vector = new VectorLayer({
@@ -130,12 +152,6 @@ class MapModuleOlCesium extends MapModuleOl {
             source: new olSourceOSM()
         }));
         olMap.addLayer(vector);
-    }
-
-    _loadBBoxStrategy () {
-        jQuery('#' + this.getMapElementId() + '-hidden').css({display: 'block'});
-        //this.getMap().render();
-        jQuery('#' + this.getMapElementId() + '-hidden').css({display: 'none'});
     }
 
     _createSkyBox () {
