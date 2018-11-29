@@ -3,6 +3,13 @@ import olView from 'ol/View';
 import * as olProj from 'ol/proj';
 import olMap from 'ol/Map';
 import {defaults as olControlDefaults} from 'ol/control';
+import GeoJSON from 'ol/format/GeoJSON';
+import VectorLayer from 'ol/layer/Vector';
+import {bbox as bboxStrategy} from 'ol/loadingstrategy';
+import VectorSource from 'ol/source/Vector';
+import {Stroke, Style} from 'ol/style';
+import olSourceOSM from 'ol/source/OSM';
+import olLayerTile from 'ol/layer/Tile';
 import OLCesium from 'ol-cesium';
 import MapModuleOl from 'oskari-frontend/bundles/mapping/mapmodule/MapModuleClass.ol';
 import 'ol-cesium/css/olcs.css';
@@ -60,6 +67,7 @@ class MapModuleOlCesium extends MapModuleOl {
         var time = Cesium.JulianDate.fromIso8601('2017-07-11T12:00:00Z');
         this._map3d = new OLCesium({
             map: map,
+            target: this.getMapElementId(),
             time: () => time,
             sceneOptions: {
                 showCredit: false,
@@ -93,7 +101,41 @@ class MapModuleOlCesium extends MapModuleOl {
         };
         scene.postRender.addEventListener(updateReadyStatus);
 
+        this._getWFSGeoJSONTestLayer(map);
+        // setInterval(() => this._loadBBoxStrategy(), 10000);
         return map;
+    }
+
+    _getWFSGeoJSONTestLayer (olMap) {
+        var vectorSource = new VectorSource({
+            format: new GeoJSON(),
+            url: function (extent) {
+                return 'https://ahocevar.com/geoserver/wfs?service=WFS&' +
+                    'version=1.1.0&request=GetFeature&typename=osm:water_areas&' +
+                    'outputFormat=application/json&srsname=EPSG:3857&' +
+                    'bbox=' + extent.join(',') + ',EPSG:3857';
+            },
+            strategy: bboxStrategy
+        });
+        var vector = new VectorLayer({
+            source: vectorSource,
+            style: new Style({
+                stroke: new Stroke({
+                    color: 'rgba(0, 0, 255, 1.0)',
+                    width: 2
+                })
+            })
+        });
+        olMap.addLayer(new olLayerTile({
+            source: new olSourceOSM()
+        }));
+        olMap.addLayer(vector);
+    }
+
+    _loadBBoxStrategy () {
+        jQuery('#' + this.getMapElementId() + '-hidden').css({display: 'block'});
+        //this.getMap().render();
+        jQuery('#' + this.getMapElementId() + '-hidden').css({display: 'none'});
     }
 
     _createSkyBox () {
