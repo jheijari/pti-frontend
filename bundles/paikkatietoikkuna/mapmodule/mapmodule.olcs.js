@@ -116,7 +116,7 @@ class MapModuleOlCesium extends MapModuleOl {
                 type: 'GET',
                 dataType: 'json',
                 data: {
-                    id: 1641,
+                    id: 1123,
                     bbox: extent.join(',')
                 },
                 url: Oskari.urls.getRoute('GetWFSFeatures'),
@@ -145,9 +145,6 @@ class MapModuleOlCesium extends MapModuleOl {
                 })
             })
         });
-        olMap.addLayer(new olLayerTile({
-            source: new olSourceOSM()
-        }));
         olMap.addLayer(vector);
     }
 
